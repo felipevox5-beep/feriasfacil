@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import db from './db.js';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,47 @@ app.use(express.json());
 
 // Servir arquivos estáticos do React (após build)
 app.use(express.static(path.join(__dirname, '../dist')));
+
+// --- API Endpoint IA ---
+app.post('/api/chat', async (req, res) => {
+    const { prompt, context } = req.body;
+
+    if (!prompt) {
+        return res.status(400).json({ error: 'Prompt é obrigatório' });
+    }
+
+    if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: 'Servidor não configurado com chave API' });
+    }
+
+    try {
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        // Construir um prompt enriquecido com o contexto dos colaboradores
+        const systemInstruction = `
+      Você é um especialista em legislação trabalhista brasileira (CLT) e gestão de RH.
+      Seu objetivo é ajudar gestores a planejar férias.
+      
+      Contexto dos Colaboradores da Empresa:
+      ${JSON.stringify(context || [])}
+      
+      Responda de forma concisa, profissional e focada na legislação brasileira.
+      Se a pergunta for sobre um colaborador específico, use os dados fornecidos.
+    `;
+
+        const fullPrompt = `${systemInstruction}\n\nUsuário: ${prompt}`;
+
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        const text = response.text();
+
+        res.json({ text });
+    } catch (err) {
+        console.error('Erro na API Gemini:', err);
+        res.status(500).json({ error: 'Erro ao processar resposta da IA' });
+    }
+});
 
 // --- API Endpoints Colaboradores ---
 

@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
 import { Send, Sparkles, Loader2, Bot, FileText, X, ChevronRight, Calendar, User, Clock, Settings, Save, FileUp, Table } from 'lucide-react';
 import { Employee } from '../types';
 import { addDays, subDays, formatDate, parseLocalDate } from '../utils/dateUtils';
@@ -17,7 +15,7 @@ const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [
   const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Custom Template State
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [baseTemplate, setBaseTemplate] = useState(() => {
@@ -36,8 +34,8 @@ const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [
   // Trigger ask immediately if initialPrompt changes and is not empty
   useEffect(() => {
     if (initialPrompt && initialPrompt !== prompt) {
-       setPrompt(initialPrompt);
-       handleAsk(initialPrompt);
+      setPrompt(initialPrompt);
+      handleAsk(initialPrompt);
     }
   }, [initialPrompt]);
 
@@ -69,7 +67,7 @@ const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [
       const workbook = XLSX.read(data);
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      
+
       // Convert sheet to plain text by extracting all non-empty cell values
       const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
       const textContent = json
@@ -100,20 +98,26 @@ const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [
     if (textToAsk !== prompt) setPrompt(textToAsk);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const model = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: textToAsk,
-        config: {
-          systemInstruction: "Você é um especialista em Recursos Humanos do Brasil, com foco profundo na CLT. Seu objetivo é gerar documentos e tirar dúvidas. Se o usuário fornecer um 'MODELO BASE', você deve usá-lo EXATAMENTE, mantendo toda a estrutura original e substituindo apenas as informações variáveis (lacunas). Se o modelo original estiver em formato de planilha (tabela), tente reproduzir a estrutura textual dele de forma organizada. Use linguagem formal jurídica.",
-        }
+      // Call Backend API instead of direct Client SDK
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: textToAsk,
+          context: employees
+        }),
       });
-      
-      setResponse(model.text || "Desculpe, não consegui gerar uma resposta no momento.");
+
+      if (!res.ok) {
+        throw new Error('Falha na comunicação com o servidor');
+      }
+
+      const data = await res.json();
+      setResponse(data.text || "Desculpe, não consegui gerar uma resposta no momento.");
       setShowGenerator(false);
     } catch (error) {
       console.error("Error asking AI:", error);
-      setResponse("Ocorreu um erro ao conectar com o assistente inteligente. Verifique sua chave de API.");
+      setResponse("Ocorreu um erro ao conectar com o assistente inteligente. Verifique se o backend está rodando e a chave API configurada.");
     } finally {
       setLoading(false);
     }
@@ -124,12 +128,12 @@ const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [
     if (!emp || !genData.startDate || !genData.noticeDate) return;
 
     const start = parseLocalDate(genData.startDate);
-    const end = addDays(start, genData.days - 1); 
+    const end = addDays(start, genData.days - 1);
     const returnDate = addDays(start, genData.days);
     const notice = parseLocalDate(genData.noticeDate);
 
     let generatedPrompt = '';
-    
+
     if (baseTemplate.trim()) {
       generatedPrompt = `Use o MODELO BASE abaixo para gerar o Aviso de Férias. 
 Substitua os campos necessários com estes dados:
@@ -167,7 +171,7 @@ Data do documento: ${formatDate(notice)}. Use o Art. 135 da CLT.`;
             <h2 className="text-lg font-bold text-slate-800 dark:text-white">Assistente de RH</h2>
           </div>
         </div>
-        
+
         <div className="flex gap-2">
           <button
             onClick={() => {
@@ -208,14 +212,14 @@ Data do documento: ${formatDate(notice)}. Use o Art. 135 da CLT.`;
                   Cole seu modelo ou <strong>importe um arquivo Excel</strong> para extrair o texto.
                 </p>
               </div>
-              
+
               <div className="flex gap-2">
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileUpload} 
-                  accept=".xlsx, .xls" 
-                  className="hidden" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  accept=".xlsx, .xls"
+                  className="hidden"
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
@@ -234,15 +238,15 @@ Data do documento: ${formatDate(notice)}. Use o Art. 135 da CLT.`;
               value={baseTemplate}
               onChange={(e) => setBaseTemplate(e.target.value)}
             />
-            
+
             <div className="mt-4 flex justify-end">
-               <button
-                 onClick={saveTemplate}
-                 className="bg-orange-600 dark:bg-orange-500 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors shadow-sm"
-               >
-                 <Save className="w-4 h-4" />
-                 Salvar Modelo Base
-               </button>
+              <button
+                onClick={saveTemplate}
+                className="bg-orange-600 dark:bg-orange-500 text-white text-sm font-medium px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-orange-700 transition-colors shadow-sm"
+              >
+                <Save className="w-4 h-4" />
+                Salvar Modelo Base
+              </button>
             </div>
           </div>
         )}
@@ -254,7 +258,7 @@ Data do documento: ${formatDate(notice)}. Use o Art. 135 da CLT.`;
               <Sparkles className="w-4 h-4" />
               Preencher Dados para o Documento
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Colaborador</label>
@@ -263,7 +267,7 @@ Data do documento: ${formatDate(notice)}. Use o Art. 135 da CLT.`;
                   <select
                     className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none appearance-none"
                     value={genData.empId}
-                    onChange={e => setGenData({...genData, empId: e.target.value})}
+                    onChange={e => setGenData({ ...genData, empId: e.target.value })}
                   >
                     <option value="">Selecione um colaborador...</option>
                     {employees.map(e => (
@@ -279,7 +283,7 @@ Data do documento: ${formatDate(notice)}. Use o Art. 135 da CLT.`;
                   type="date"
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none dark:[color-scheme:dark]"
                   value={genData.startDate}
-                  onChange={e => setGenData({...genData, startDate: e.target.value})}
+                  onChange={e => setGenData({ ...genData, startDate: e.target.value })}
                 />
               </div>
 
@@ -288,7 +292,7 @@ Data do documento: ${formatDate(notice)}. Use o Art. 135 da CLT.`;
                 <select
                   className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                   value={genData.days}
-                  onChange={e => setGenData({...genData, days: Number(e.target.value)})}
+                  onChange={e => setGenData({ ...genData, days: Number(e.target.value) })}
                 >
                   <option value={30}>30 dias</option>
                   <option value={20}>20 dias</option>
@@ -317,37 +321,37 @@ Data do documento: ${formatDate(notice)}. Use o Art. 135 da CLT.`;
         {/* Chat History / Response */}
         {response ? (
           <div className="flex gap-4 animate-fade-in">
-             <div className="flex-shrink-0 mt-1">
-                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
-                  <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                </div>
-             </div>
-             <div className="prose prose-slate dark:prose-invert max-w-none bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-2xl rounded-tl-none border border-indigo-100 dark:border-indigo-800 w-full shadow-sm">
-               <div className="text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed font-mono text-sm selection:bg-indigo-200 dark:selection:bg-indigo-800">
-                  {response}
-               </div>
-               <div className="mt-4 pt-4 border-t border-indigo-100 dark:border-indigo-800 flex justify-end">
-                  <button 
-                    onClick={() => {
-                      navigator.clipboard.writeText(response);
-                      alert('Texto copiado!');
-                    }}
-                    className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:bg-white/50 dark:hover:bg-black/20 px-3 py-1.5 rounded-lg transition-colors"
-                  >
-                    Copiar Documento
-                  </button>
-               </div>
-             </div>
+            <div className="flex-shrink-0 mt-1">
+              <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center border border-indigo-200 dark:border-indigo-800">
+                <Bot className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+            </div>
+            <div className="prose prose-slate dark:prose-invert max-w-none bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-2xl rounded-tl-none border border-indigo-100 dark:border-indigo-800 w-full shadow-sm">
+              <div className="text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed font-mono text-sm selection:bg-indigo-200 dark:selection:bg-indigo-800">
+                {response}
+              </div>
+              <div className="mt-4 pt-4 border-t border-indigo-100 dark:border-indigo-800 flex justify-end">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(response);
+                    alert('Texto copiado!');
+                  }}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:bg-white/50 dark:hover:bg-black/20 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  Copiar Documento
+                </button>
+              </div>
+            </div>
           </div>
         ) : !showGenerator && !showTemplateEditor && (
-           <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 space-y-4 py-10">
-             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-full">
-                <Sparkles className="w-8 h-8 text-indigo-300 dark:text-indigo-600" />
-             </div>
-             <p className="text-center max-w-md text-sm">
-               Configure seu <strong>Modelo Base</strong> (pode ser via importação de Excel) ou use o <strong>Gerador</strong> para criar documentos automáticos.
-             </p>
-           </div>
+          <div className="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500 space-y-4 py-10">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-full">
+              <Sparkles className="w-8 h-8 text-indigo-300 dark:text-indigo-600" />
+            </div>
+            <p className="text-center max-w-md text-sm">
+              Configure seu <strong>Modelo Base</strong> (pode ser via importação de Excel) ou use o <strong>Gerador</strong> para criar documentos automáticos.
+            </p>
+          </div>
         )}
       </div>
 
