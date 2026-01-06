@@ -7,10 +7,8 @@ const { Pool } = pg;
 
 // Configura a conexão com o banco de dados usando a variável de ambiente
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-        rejectUnauthorized: false
-    }
+    connectionString: process.env.DATABASE_URL
+    // SSL removido pois o banco do CapRover (interno) não suporta/requer SSL externamente neste contexto
 });
 
 // Testar conexão
