@@ -1,30 +1,20 @@
 # Build Stage
 FROM node:18-alpine as build
-
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
-
-# Copy source code
 COPY . .
-
-# Build the application
 RUN npm run build
 
 # Production Stage
-FROM nginx:alpine
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install --omit=dev
+COPY --from=build /app/dist ./dist
+COPY server ./server
 
-# Copy built assets from builder
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port (CapRover default is usually 80 inside container)
+# CapRover env vars usually pass port 80, but we default to 80 in code too
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["npm", "start"]
