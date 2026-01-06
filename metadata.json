@@ -1,0 +1,5 @@
+{
+  "name": "Gestor de Férias Fácil",
+  "description": "Sistema inteligente para controle de férias de equipe, cálculo automático de retorno e alertas de vencimento (CLT), integrado com Assistente de RH por IA.",
+  "requestFramePermissions": []
+}
