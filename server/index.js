@@ -55,7 +55,7 @@ app.post('/api/chat', async (req, res) => {
         res.json({ text });
     } catch (err) {
         console.error('Erro na API Gemini:', err);
-        res.status(500).json({ error: 'Erro ao processar resposta da IA' });
+        res.status(500).json({ error: 'Erro ao processar resposta da IA', details: err.message });
     }
 });
 
@@ -104,8 +104,8 @@ app.post('/api/employees', async (req, res) => {
             name: row.name,
             role: row.role,
             department: row.department,
-            admissionDate: row.admission_date, // Postgres retorna data, talvez precise formatar
-            lastVacationEnd: row.last_vacation_end
+            admissionDate: row.admission_date ? new Date(row.admission_date).toISOString().split('T')[0] : null,
+            lastVacationEnd: row.last_vacation_end ? new Date(row.last_vacation_end).toISOString().split('T')[0] : null
         };
 
         res.status(201).json(formatted);
