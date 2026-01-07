@@ -33,8 +33,7 @@ app.post('/api/chat', async (req, res) => {
     try {
         const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : "";
         const genAI = new GoogleGenerativeAI(apiKey);
-        // Using specific version to avoid alias issues
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         // Construir um prompt enriquecido com o contexto dos colaboradores
         const systemInstruction = `
@@ -57,7 +56,28 @@ app.post('/api/chat', async (req, res) => {
         res.json({ text });
     } catch (err) {
         console.error('Erro na API Gemini:', err);
-        res.status(500).json({ error: 'Erro ao processar resposta da IA', details: err.message });
+
+        // Diagnóstico: Listar modelos disponíveis em caso de erro
+        let availableModels = [];
+        try {
+            const key = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : "";
+            const modelsRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+            const modelsData = await modelsRes.json();
+            if (modelsData.models) {
+                availableModels = modelsData.models.map(m => m.name);
+                console.log('Modelos Disponíveis para esta Chave:', availableModels);
+            } else {
+                console.log('Erro ao listar modelos:', modelsData);
+            }
+        } catch (listErr) {
+            console.error('Falha ao listar modelos:', listErr);
+        }
+
+        res.status(500).json({
+            error: 'Erro ao processar resposta da IA',
+            details: err.message,
+            availableModels: availableModels
+        });
     }
 });
 
