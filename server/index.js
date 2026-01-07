@@ -128,6 +128,93 @@ app.delete('/api/employees/:id', async (req, res) => {
     }
 });
 
+// --- API Endpoints Férias ---
+
+// Listar Férias
+app.get('/api/vacations', async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM vacations ORDER BY start_date ASC');
+        const formatted = result.rows.map(row => ({
+            id: row.id,
+            employeeId: row.employee_id,
+            startDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
+            durationDays: row.duration_days,
+            status: row.status,
+            hasAbono: row.has_abono
+        }));
+        res.json(formatted);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao buscar férias' });
+    }
+});
+
+// Adicionar Férias
+app.post('/api/vacations', async (req, res) => {
+    const { employeeId, startDate, durationDays, status, hasAbono } = req.body;
+    try {
+        const result = await db.query(
+            `INSERT INTO vacations (employee_id, start_date, duration_days, status, has_abono) 
+             VALUES ($1, $2, $3, $4, $5) 
+             RETURNING *`,
+            [employeeId, startDate, durationDays, status, hasAbono || false]
+        );
+        const row = result.rows[0];
+        const formatted = {
+            id: row.id,
+            employeeId: row.employee_id,
+            startDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
+            durationDays: row.duration_days,
+            status: row.status,
+            hasAbono: row.has_abono
+        };
+        res.status(201).json(formatted);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao agendar férias' });
+    }
+});
+
+// Atualizar Férias
+app.put('/api/vacations/:id', async (req, res) => {
+    const { id } = req.params;
+    const { startDate, durationDays, status, hasAbono } = req.body;
+    try {
+        const result = await db.query(
+            `UPDATE vacations 
+             SET start_date = $1, duration_days = $2, status = $3, has_abono = $4 
+             WHERE id = $5 
+             RETURNING *`,
+            [startDate, durationDays, status, hasAbono || false, id]
+        );
+        const row = result.rows[0];
+        const formatted = {
+            id: row.id,
+            employeeId: row.employee_id,
+            startDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
+            durationDays: row.duration_days,
+            status: row.status,
+            hasAbono: row.has_abono
+        };
+        res.json(formatted);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao atualizar férias' });
+    }
+});
+
+// Remover Férias
+app.delete('/api/vacations/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query('DELETE FROM vacations WHERE id = $1', [id]);
+        res.json({ message: 'Férias removidas com sucesso' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao remover férias' });
+    }
+});
+
 // Redirecionar qualquer outra rota para o React (SPA)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../dist', 'index.html'));
