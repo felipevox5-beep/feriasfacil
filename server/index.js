@@ -151,13 +151,21 @@ app.get('/api/vacations', async (req, res) => {
 
 // Adicionar Férias
 app.post('/api/vacations', async (req, res) => {
+    console.log('Recebendo requisição de férias:', req.body);
     const { employeeId, startDate, durationDays, status, hasAbono } = req.body;
+
+    // Validação básica
+    if (!employeeId || !startDate || !durationDays) {
+        console.error('Dados incompletos:', req.body);
+        return res.status(400).json({ error: 'Dados incompletos (employeeId, startDate, durationDays)' });
+    }
+
     try {
         const result = await db.query(
             `INSERT INTO vacations (employee_id, start_date, duration_days, status, has_abono) 
              VALUES ($1, $2, $3, $4, $5) 
              RETURNING *`,
-            [employeeId, startDate, durationDays, status, hasAbono || false]
+            [employeeId, startDate, parseInt(durationDays), status, Boolean(hasAbono)]
         );
         const row = result.rows[0];
         const formatted = {
@@ -168,10 +176,11 @@ app.post('/api/vacations', async (req, res) => {
             status: row.status,
             hasAbono: row.has_abono
         };
+        console.log('Férias salvas com sucesso:', formatted);
         res.status(201).json(formatted);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Erro ao agendar férias' });
+        console.error('Erro ao inserir férias no banco:', err);
+        res.status(500).json({ error: 'Erro ao agendar férias', details: err.message });
     }
 });
 
