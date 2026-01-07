@@ -33,7 +33,7 @@ app.post('/api/chat', async (req, res) => {
     try {
         const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : "";
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         // Construir um prompt enriquecido com o contexto dos colaboradores
         const systemInstruction = `
