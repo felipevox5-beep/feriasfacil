@@ -14,6 +14,8 @@ export interface Vacation {
   durationDays: number;
   status: 'scheduled' | 'active' | 'completed';
   hasAbono?: boolean; // Brazilian Abono Pecuniário (Selling 1/3 of vacation)
+  noticeSent?: boolean; // If the formal notice was given 30 days prior
+  advance13th?: boolean; // If 1st installment of 13th salary was requested
 }
 
 export interface VacationCalculation {

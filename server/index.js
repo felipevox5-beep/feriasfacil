@@ -83,22 +83,27 @@ app.get('/api/employees', async (req, res) => {
     }
 });
 
-// 2. Adicionar Colaborador
+// --- Auto-Migration: Atualizar Schema se necessário ---
+const runMigrations = async () => {
+    try {
+        await db.query(`
+            ALTER TABLE vacations ADD COLUMN IF NOT EXISTS notice_sent BOOLEAN DEFAULT FALSE;
+            ALTER TABLE vacations ADD COLUMN IF NOT EXISTS advance_13th BOOLEAN DEFAULT FALSE;
+        `);
+        console.log('Migração de Schema executada com sucesso.');
+    } catch (err) {
+        console.error('Erro na migração de schema:', err);
+    }
+};
+
+// 2. Criar Colaborador
 app.post('/api/employees', async (req, res) => {
     const { name, role, department, admissionDate, lastVacationEnd } = req.body;
-
-    if (!name || !role || !admissionDate) {
-        return res.status(400).json({ error: 'Campos obrigatórios faltando' });
-    }
-
     try {
         const result = await db.query(
-            `INSERT INTO employees (name, role, department, admission_date, last_vacation_end) 
-       VALUES ($1, $2, $3, $4, $5) 
-       RETURNING *`,
+            'INSERT INTO employees (name, role, department, admission_date, last_vacation_end) VALUES ($1, $2, $3, $4, $5) RETURNING *',
             [name, role, department, admissionDate, lastVacationEnd || null]
         );
-
         const row = result.rows[0];
         const formatted = {
             id: row.id,
@@ -113,6 +118,40 @@ app.post('/api/employees', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Erro ao criar colaborador' });
+    }
+});
+
+// 2.5 Editar Colaborador
+app.put('/api/employees/:id', async (req, res) => {
+    const { id } = req.params;
+    const { name, role, department, admissionDate, lastVacationEnd } = req.body;
+    try {
+        const result = await db.query(
+            `UPDATE employees 
+             SET name = $1, role = $2, department = $3, admission_date = $4, last_vacation_end = $5, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $6
+             RETURNING *`,
+            [name, role, department, admissionDate, lastVacationEnd || null, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Colaborador não encontrado' });
+        }
+
+        const row = result.rows[0];
+        const formatted = {
+            id: row.id,
+            name: row.name,
+            role: row.role,
+            department: row.department,
+            admissionDate: row.admission_date ? new Date(row.admission_date).toISOString().split('T')[0] : null,
+            lastVacationEnd: row.last_vacation_end ? new Date(row.last_vacation_end).toISOString().split('T')[0] : null
+        };
+
+        res.json(formatted);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao atualizar colaborador' });
     }
 });
 
@@ -140,7 +179,9 @@ app.get('/api/vacations', async (req, res) => {
             startDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
             durationDays: row.duration_days,
             status: row.status,
-            hasAbono: row.has_abono
+            hasAbono: row.has_abono,
+            noticeSent: row.notice_sent,
+            advance13th: row.advance_13th
         }));
         res.json(formatted);
     } catch (err) {
@@ -152,7 +193,7 @@ app.get('/api/vacations', async (req, res) => {
 // Adicionar Férias
 app.post('/api/vacations', async (req, res) => {
     console.log('Recebendo requisição de férias:', req.body);
-    const { employeeId, startDate, durationDays, status, hasAbono } = req.body;
+    const { employeeId, startDate, durationDays, status, hasAbono, advance13th } = req.body;
 
     // Validação básica
     if (!employeeId || !startDate || !durationDays) {
@@ -162,10 +203,10 @@ app.post('/api/vacations', async (req, res) => {
 
     try {
         const result = await db.query(
-            `INSERT INTO vacations (employee_id, start_date, duration_days, status, has_abono) 
-             VALUES ($1, $2, $3, $4, $5) 
+            `INSERT INTO vacations (employee_id, start_date, duration_days, status, has_abono, advance_13th) 
+             VALUES ($1, $2, $3, $4, $5, $6) 
              RETURNING *`,
-            [employeeId, startDate, parseInt(durationDays), status, Boolean(hasAbono)]
+            [employeeId, startDate, parseInt(durationDays), status, Boolean(hasAbono), Boolean(advance13th)]
         );
         const row = result.rows[0];
         const formatted = {
@@ -174,7 +215,9 @@ app.post('/api/vacations', async (req, res) => {
             startDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
             durationDays: row.duration_days,
             status: row.status,
-            hasAbono: row.has_abono
+            hasAbono: row.has_abono,
+            noticeSent: row.notice_sent,
+            advance13th: row.advance_13th
         };
         console.log('Férias salvas com sucesso:', formatted);
         res.status(201).json(formatted);
@@ -187,14 +230,14 @@ app.post('/api/vacations', async (req, res) => {
 // Atualizar Férias
 app.put('/api/vacations/:id', async (req, res) => {
     const { id } = req.params;
-    const { startDate, durationDays, status, hasAbono } = req.body;
+    const { startDate, durationDays, status, hasAbono, noticeSent, advance13th } = req.body;
     try {
         const result = await db.query(
             `UPDATE vacations 
-             SET start_date = $1, duration_days = $2, status = $3, has_abono = $4 
-             WHERE id = $5 
+             SET start_date = $1, duration_days = $2, status = $3, has_abono = $4, notice_sent = $5, advance_13th = $6
+             WHERE id = $7 
              RETURNING *`,
-            [startDate, durationDays, status, hasAbono || false, id]
+            [startDate, durationDays, status, hasAbono || false, noticeSent || false, advance13th || false, id]
         );
         const row = result.rows[0];
         const formatted = {
@@ -203,7 +246,9 @@ app.put('/api/vacations/:id', async (req, res) => {
             startDate: row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : null,
             durationDays: row.duration_days,
             status: row.status,
-            hasAbono: row.has_abono
+            hasAbono: row.has_abono,
+            noticeSent: row.notice_sent,
+            advance13th: row.advance_13th
         };
         res.json(formatted);
     } catch (err) {
@@ -227,6 +272,16 @@ app.delete('/api/vacations/:id', async (req, res) => {
 // Redirecionar qualquer outra rota para o React (SPA)
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../dist', 'index.html'));
+});
+
+// Testar conexão e rodar migrações
+db.pool.connect(async (err, client, release) => {
+    if (err) {
+        return console.error('Erro ao conectar no banco de dados:', err.stack);
+    }
+    console.log('Conectado ao Banco de Dados PostgreSQL com sucesso!');
+    await runMigrations();
+    release();
 });
 
 app.listen(port, () => {

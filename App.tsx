@@ -229,37 +229,79 @@ const App: React.FC = () => {
           </p>
         </header>
 
-        <div className="max-w-6xl mx-auto h-[calc(100vh-12rem)]">
-          {activeTab === Tab.DASHBOARD && (
-            <Dashboard
-              employees={employees}
-              vacations={vacations}
-              onNavigate={handleNavigate}
-              onAskAI={handleAskAI}
-              onCancelVacation={handleCancelVacation}
-              onEditVacation={handleEditVacation}
-            />
-          )}
-          {activeTab === Tab.EMPLOYEES && (
-            <Employees employees={employees} onAddEmployee={handleAddEmployee} onRemoveEmployee={handleRemoveEmployee} />
-          )}
-          {activeTab === Tab.CALCULATOR && (
-            <Calculator
-              employees={employees}
-              vacations={vacations}
-              onSaveVacation={handleSaveVacation}
-              editingVacation={editingVacation}
-              onUpdateVacation={handleUpdateVacation}
-              onCancelEdit={handleCancelEdit}
-            />
-          )}
-          {activeTab === Tab.ADVISOR && (
-            <AIAdvisor initialPrompt={aiPrompt} employees={employees} />
-          )}
+  const handleEditEmployee = async (updatedEmp: Employee) => {
+    try {
+      const res = await fetch(`/api/employees/${updatedEmp.id}`, {
+          method: 'PUT',
+        headers: {'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedEmp),
+      });
+        if (res.ok) {
+        const savedEmp = await res.json();
+        setEmployees(employees.map(e => e.id === savedEmp.id ? savedEmp : e));
+      }
+    } catch (error) {
+          console.error('Error updating employee', error);
+    }
+  };
+
+        // ... (rest of the file)
+
+        return (
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col md:flex-row transition-colors duration-200">
+          {/* ... (sidebar) ... */}
+
+          {/* Main Content */}
+          <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <header className="mb-8">
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+                {activeTab === Tab.DASHBOARD && 'Visão Geral'}
+                {activeTab === Tab.EMPLOYEES && 'Gerenciar Time'}
+                {activeTab === Tab.CALCULATOR && 'Planejamento de Férias'}
+                {activeTab === Tab.ADVISOR && 'Consultoria Jurídica (IA)'}
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+                {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+            </header>
+
+            <div className="max-w-6xl mx-auto h-[calc(100vh-12rem)]">
+              {activeTab === Tab.DASHBOARD && (
+                <Dashboard
+                  employees={employees}
+                  vacations={vacations}
+                  onNavigate={handleNavigate}
+                  onAskAI={handleAskAI}
+                  onCancelVacation={handleCancelVacation}
+                  onEditVacation={handleEditVacation}
+                  onUpdateVacation={handleUpdateVacation} // Connected
+                />
+              )}
+              {activeTab === Tab.EMPLOYEES && (
+                <Employees
+                  employees={employees}
+                  onAddEmployee={handleAddEmployee}
+                  onRemoveEmployee={handleRemoveEmployee}
+                  onEditEmployee={handleEditEmployee} // Connected
+                />
+              )}
+              {activeTab === Tab.CALCULATOR && (
+                <Calculator
+                  employees={employees}
+                  vacations={vacations}
+                  onSaveVacation={handleSaveVacation}
+                  editingVacation={editingVacation}
+                  onUpdateVacation={handleUpdateVacation}
+                  onCancelEdit={handleCancelEdit}
+                />
+              )}
+              {activeTab === Tab.ADVISOR && (
+                <AIAdvisor initialPrompt={aiPrompt} employees={employees} />
+              )}
+            </div>
+          </main>
         </div>
-      </main>
-    </div>
-  );
+        );
 };
 
-export default App;
+        export default App;
