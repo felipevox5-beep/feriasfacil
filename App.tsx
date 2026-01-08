@@ -5,12 +5,14 @@ import Employees from './components/Employees';
 import Calculator from './components/Calculator';
 import AIAdvisor from './components/AIAdvisor';
 import Login from './components/Login';
-import { LayoutDashboard, Users, Calculator as CalcIcon, MessageSquareText, Moon, Sun, LogOut } from 'lucide-react';
+import UsersComponent from './components/Users';
+import { LayoutDashboard, Users, Calculator as CalcIcon, MessageSquareText, Moon, Sun, LogOut, Lock } from 'lucide-react';
 
 const App: React.FC = () => {
   // Auth State
   const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
   const [username, setUsername] = useState<string>(localStorage.getItem('username') || '');
+  const [role, setRole] = useState<string>(localStorage.getItem('userRole') || 'common');
 
   // App State
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
@@ -64,18 +66,23 @@ const App: React.FC = () => {
     }
   }, [darkMode]);
 
-  const handleLogin = (newToken: string, newUsername: string) => {
+  const handleLogin = (newToken: string, newUsername: string, newRole?: string) => {
+    const userRole = newRole || 'common';
     localStorage.setItem('authToken', newToken);
     localStorage.setItem('username', newUsername);
+    localStorage.setItem('userRole', userRole);
     setToken(newToken);
     setUsername(newUsername);
+    setRole(userRole);
   };
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('username');
+    localStorage.removeItem('userRole');
     setToken(null);
     setUsername('');
+    setRole('common');
     setEmployees([]);
     setVacations([]);
   };
@@ -262,6 +269,16 @@ const App: React.FC = () => {
             <MessageSquareText className="w-5 h-5" />
             Consultor IA
           </button>
+
+          {role === 'master' && (
+            <button
+              onClick={() => handleNavigate(Tab.USERS)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === Tab.USERS ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            >
+              <Lock className="w-5 h-5" />
+              Usuários
+            </button>
+          )}
         </nav>
 
         <div className="p-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
@@ -291,6 +308,7 @@ const App: React.FC = () => {
             {activeTab === Tab.EMPLOYEES && 'Gerenciar Time'}
             {activeTab === Tab.CALCULATOR && 'Planejamento de Férias'}
             {activeTab === Tab.ADVISOR && 'Consultoria Jurídica (IA)'}
+            {activeTab === Tab.USERS && 'Gerenciamento de Usuários'}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -329,6 +347,9 @@ const App: React.FC = () => {
           )}
           {activeTab === Tab.ADVISOR && (
             <AIAdvisor initialPrompt={aiPrompt} employees={employees} />
+          )}
+          {activeTab === Tab.USERS && role === 'master' && (
+            <UsersComponent token={token} />
           )}
         </div>
       </main>

@@ -8,10 +8,11 @@ interface DashboardProps extends TabNavigationProps {
   vacations: Vacation[];
   onCancelVacation?: (id: string) => void;
   onEditVacation?: (vacation: Vacation) => void;
-  onUpdateVacation?: (vacation: Vacation) => void; // New Prop
+  onUpdateVacation?: (vacation: Vacation) => void;
+  userRole?: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ employees, vacations, onAskAI, onCancelVacation, onEditVacation, onUpdateVacation }) => {
+const Dashboard: React.FC<DashboardProps> = ({ employees, vacations, onAskAI, onCancelVacation, onEditVacation, onUpdateVacation, userRole }) => {
   const today = new Date();
 
   // Logic to find expiring vacations
@@ -250,7 +251,7 @@ const Dashboard: React.FC<DashboardProps> = ({ employees, vacations, onAskAI, on
                               </button>
                             )}
 
-                            {onCancelVacation && (
+                            {onCancelVacation && userRole === 'master' && (
                               <button
                                 onClick={() => onCancelVacation(vac.id)}
                                 className="text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"

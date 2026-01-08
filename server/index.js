@@ -22,10 +22,10 @@ app.use(express.json());
 // Servir arquivos estáticos do React (após build)
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// --- Middleware de Autenticação ---
+// --- Middleware de Autenticação e Autorização ---
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) return res.sendStatus(401);
 
@@ -34,6 +34,14 @@ const authenticateToken = (req, res, next) => {
         req.user = user;
         next();
     });
+};
+
+const requireMaster = (req, res, next) => {
+    if (req.user && req.user.role === 'master') {
+        next();
+    } else {
+        res.status(403).json({ error: 'Acesso negado: Requer privilégios Master' });
+    }
 };
 
 // --- API Endpoint IA ---
@@ -118,24 +126,27 @@ const runMigrations = async () => {
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 username VARCHAR(255) UNIQUE NOT NULL,
                 password_hash VARCHAR(255) NOT NULL,
+                role VARCHAR(50) DEFAULT 'common',
                 created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             );
+            
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'common';
         `);
 
-        // 3. Garantir que o usuário admin existe com a senha correta
+        // 3. Garantir que o usuário admin existe com a senha correta e role 'master'
         // Gera um novo hash para 'admin123'
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash('admin123', salt);
 
         // Upsert do admin (Insere ou Atualiza)
         await db.query(`
-            INSERT INTO users (username, password_hash) 
-            VALUES ('admin', $1)
+            INSERT INTO users (username, password_hash, role) 
+            VALUES ('admin', $1, 'master')
             ON CONFLICT (username) 
-            DO UPDATE SET password_hash = $1
+            DO UPDATE SET password_hash = $1, role = 'master'
         `, [hash]);
 
-        console.log('Usuário admin verificado/atualizado (user: admin, pass: admin123)');
+        console.log('Usuário admin verificado/atualizado (user: admin, pass: admin123, role: master)');
 
         console.log('Migração de Schema e Seed executados com sucesso.');
     } catch (err) {
@@ -164,8 +175,8 @@ app.post('/api/auth/login', async (req, res) => {
         }
 
         console.log(`[AUTH] Sucesso: Login realizado para '${username}'.`);
-        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '8h' });
-        res.json({ token, username: user.username });
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
+        res.json({ token, username: user.username, role: user.role });
     } catch (err) {
         console.error('[AUTH] Erro no servidor durante login:', err);
         res.status(500).json({ error: 'Erro no login' });
@@ -174,6 +185,60 @@ app.post('/api/auth/login', async (req, res) => {
 
 app.post('/api/auth/verify', authenticateToken, (req, res) => {
     res.json({ valid: true, user: req.user });
+});
+
+// --- API Endpoints Usuários (Gerenciamento) ---
+// Listar Usuários
+app.get('/api/users', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT id, username, role, created_at FROM users ORDER BY username ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao listar usuários' });
+    }
+});
+
+// Criar Usuário (Apenas Master pode criar novos usuários)
+app.post('/api/users', authenticateToken, requireMaster, async (req, res) => {
+    const { username, password, role } = req.body;
+    if (!username || !password) return res.status(400).json({ error: 'Usuário e senha obrigatórios' });
+
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(password, salt);
+
+        const finalRole = role || 'common'; // Default role
+
+        const result = await db.query(
+            'INSERT INTO users (username, password_hash, role) VALUES ($1, $2, $3) RETURNING id, username, role',
+            [username, hash, finalRole]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        if (err.constraint === 'users_username_key') {
+            return res.status(400).json({ error: 'Nome de usuário já existe' });
+        }
+        res.status(500).json({ error: 'Erro ao criar usuário' });
+    }
+});
+
+// Deletar Usuário (Apenas Master)
+app.delete('/api/users/:id', authenticateToken, requireMaster, async (req, res) => {
+    const { id } = req.params;
+    // Prevenir auto-exclusão para não trancar o sistema
+    if (req.user.id === id) {
+        return res.status(400).json({ error: 'Não é possível excluir o próprio usuário' });
+    }
+
+    try {
+        await db.query('DELETE FROM users WHERE id = $1', [id]);
+        res.json({ message: 'Usuário removido com sucesso' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao remover usuário' });
+    }
 });
 
 // 2. Criar Colaborador
@@ -235,8 +300,8 @@ app.put('/api/employees/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// 3. Remover Colaborador
-app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
+// 3. Remover Colaborador (Apenas Master)
+app.delete('/api/employees/:id', authenticateToken, requireMaster, async (req, res) => {
     const { id } = req.params;
     try {
         await db.query('DELETE FROM employees WHERE id = $1', [id]);
@@ -337,8 +402,8 @@ app.put('/api/vacations/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Remover Férias
-app.delete('/api/vacations/:id', authenticateToken, async (req, res) => {
+// Remover Férias (Apenas Master)
+app.delete('/api/vacations/:id', authenticateToken, requireMaster, async (req, res) => {
     const { id } = req.params;
     try {
         await db.query('DELETE FROM vacations WHERE id = $1', [id]);

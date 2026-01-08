@@ -26,10 +26,20 @@ export interface VacationCalculation {
 }
 
 export enum Tab {
-  DASHBOARD = 'DASHBOARD',
-  EMPLOYEES = 'EMPLOYEES',
-  CALCULATOR = 'CALCULATOR',
-  ADVISOR = 'ADVISOR'
+  DASHBOARD = 'dashboard',
+  EMPLOYEES = 'employees',
+  CALCULATOR = 'calculator',
+  ADVISOR = 'advisor',
+  USERS = 'users'
+}
+
+export type Role = 'master' | 'common';
+
+export interface User {
+  id: string;
+  username: string;
+  role: Role;
+  createdAt?: string; // Optional for display
 }
 
 export interface TabNavigationProps {

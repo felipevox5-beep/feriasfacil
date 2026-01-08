@@ -7,10 +7,11 @@ interface EmployeesProps {
   employees: Employee[];
   onAddEmployee: (emp: Employee) => void;
   onRemoveEmployee: (id: string) => void;
-  onEditEmployee?: (emp: Employee) => void; // Made optional to prevent breaks if not passed yet
+  onEditEmployee?: (emp: Employee) => void;
+  userRole?: string;
 }
 
-const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemoveEmployee, onEditEmployee }) => {
+const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemoveEmployee, onEditEmployee, userRole }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -290,19 +291,21 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => handleEditClick(emp)}
+                        onClick={() => onEditEmployee && onEditEmployee(emp)}
                         className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
                         title="Editar"
                       >
-                        <Pencil className="w-4 h-4" />
+                        <Pencil className="w-5 h-5" />
                       </button>
-                      <button
-                        onClick={() => onRemoveEmployee(emp.id)}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                        title="Remover"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {userRole === 'master' && (
+                        <button
+                          onClick={() => onRemoveEmployee(emp.id)}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Remover"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
