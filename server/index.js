@@ -122,14 +122,20 @@ const runMigrations = async () => {
             );
         `);
 
-        // 3. Criar usuário admin padrão se não houver usuários
-        const usersResult = await db.query('SELECT count(*) FROM users');
-        if (usersResult.rows[0].count === '0') {
-            const salt = await bcrypt.genSalt(10);
-            const hash = await bcrypt.hash('admin123', salt);
-            await db.query('INSERT INTO users (username, password_hash) VALUES ($1, $2)', ['admin', hash]);
-            console.log('Usuário admin padrão criado (user: admin, pass: admin123)');
-        }
+        // 3. Garantir que o usuário admin existe com a senha correta
+        // Gera um novo hash para 'admin123'
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash('admin123', salt);
+
+        // Upsert do admin (Insere ou Atualiza)
+        await db.query(`
+            INSERT INTO users (username, password_hash) 
+            VALUES ('admin', $1)
+            ON CONFLICT (username) 
+            DO UPDATE SET password_hash = $1
+        `, [hash]);
+
+        console.log('Usuário admin verificado/atualizado (user: admin, pass: admin123)');
 
         console.log('Migração de Schema e Seed executados com sucesso.');
     } catch (err) {
