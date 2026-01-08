@@ -22,7 +22,20 @@ app.use(express.json());
 // Servir arquivos estáticos do React (após build)
 app.use(express.static(path.join(__dirname, '../dist')));
 
-// --- API Endpoint IA ---
+// --- Middleware de Autenticação ---
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
 // --- API Endpoint IA ---
 app.post('/api/chat', authenticateToken, async (req, res) => {
     const { prompt, context } = req.body;
@@ -67,7 +80,8 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
 
 // --- API Endpoints Colaboradores ---
 
-// 1. Listar Colaboradores
+// --- API Endpoints Colaboradores ---
+
 // 1. Listar Colaboradores
 app.get('/api/employees', authenticateToken, async (req, res) => {
     try {
@@ -89,7 +103,6 @@ app.get('/api/employees', authenticateToken, async (req, res) => {
     }
 });
 
-// --- Auto-Migration: Atualizar Schema se necessário ---
 // --- Auto-Migration: Atualizar Schema se necessário ---
 const runMigrations = async () => {
     try {
@@ -124,20 +137,6 @@ const runMigrations = async () => {
     }
 };
 
-// --- Middleware de Autenticação ---
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-    if (!token) return res.sendStatus(401);
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
-};
-
 // --- API Auth ---
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
@@ -163,7 +162,6 @@ app.post('/api/auth/verify', authenticateToken, (req, res) => {
 });
 
 // 2. Criar Colaborador
-// 2. Criar Colaborador
 app.post('/api/employees', authenticateToken, async (req, res) => {
     const { name, role, department, admissionDate, lastVacationEnd } = req.body;
     try {
@@ -188,7 +186,6 @@ app.post('/api/employees', authenticateToken, async (req, res) => {
     }
 });
 
-// 2.5 Editar Colaborador
 // 2.5 Editar Colaborador
 app.put('/api/employees/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
@@ -224,7 +221,6 @@ app.put('/api/employees/:id', authenticateToken, async (req, res) => {
 });
 
 // 3. Remover Colaborador
-// 3. Remover Colaborador
 app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     try {
@@ -238,7 +234,6 @@ app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
 
 // --- API Endpoints Férias ---
 
-// Listar Férias
 // Listar Férias
 app.get('/api/vacations', authenticateToken, async (req, res) => {
     try {
@@ -260,7 +255,6 @@ app.get('/api/vacations', authenticateToken, async (req, res) => {
     }
 });
 
-// Adicionar Férias
 // Adicionar Férias
 app.post('/api/vacations', authenticateToken, async (req, res) => {
     console.log('Recebendo requisição de férias:', req.body);
@@ -299,7 +293,6 @@ app.post('/api/vacations', authenticateToken, async (req, res) => {
 });
 
 // Atualizar Férias
-// Atualizar Férias
 app.put('/api/vacations/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { startDate, durationDays, status, hasAbono, noticeSent, advance13th } = req.body;
@@ -329,7 +322,6 @@ app.put('/api/vacations/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// Remover Férias
 // Remover Férias
 app.delete('/api/vacations/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
