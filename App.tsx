@@ -6,7 +6,8 @@ import Calculator from './components/Calculator';
 import AIAdvisor from './components/AIAdvisor';
 import Login from './components/Login';
 import UsersComponent from './components/Users';
-import { LayoutDashboard, Users, Calculator as CalcIcon, MessageSquareText, Moon, Sun, LogOut, Lock, Menu, ChevronLeft } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator as CalcIcon, MessageSquareText, Moon, Sun, LogOut, Lock, Menu, ChevronLeft, ChevronRight, UserCog } from 'lucide-react';
+import { calculateVacationDeadlines } from './utils/dateUtils';
 
 const App: React.FC = () => {
   // Auth State
@@ -54,10 +55,30 @@ const App: React.FC = () => {
   // Fetch Data on Load
   useEffect(() => {
     if (token) {
+      verifySession();
       fetchEmployees();
       fetchVacations();
     }
   }, [token]);
+
+  const verifySession = async () => {
+    try {
+      const res = await fetch('/api/auth/verify', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user && data.user.role) {
+          // Sync role from backend
+          setRole(data.user.role);
+          localStorage.setItem('userRole', data.user.role);
+          console.log('Session verified. Role:', data.user.role);
+        }
+      }
+    } catch (err) {
+      console.error('Session verification failed', err);
+    }
+  };
 
   // Dark Mode Effect
   useEffect(() => {
@@ -231,18 +252,24 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col md:flex-row transition-colors duration-200">
       {/* Sidebar Navigation */}
-      <aside className={`bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 transition-all duration-300 flex flex-col ${sidebarOpen ? 'w-full md:w-64' : 'w-full md:w-20'}`}>
-        <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xl overflow-hidden whitespace-nowrap">
-            <div className="w-8 h-8 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg flex items-center justify-center text-lg shadow-sm flex-shrink-0">F</div>
-            {sidebarOpen && <span className="transition-opacity duration-300">Férias Fácil</span>}
-          </div>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hidden md:block">
-            {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+      <aside className={`relative bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 transition-all duration-300 flex flex-col ${sidebarOpen ? 'w-full md:w-64' : 'w-full md:w-20'}`}>
+
+        {/* Floating Toggle Button */}
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="absolute -right-3 top-9 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-full p-1 shadow-md hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors z-50 hidden md:flex items-center justify-center text-slate-500 dark:text-slate-300"
+        >
+          {sidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+
+        <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex items-center gap-3 overflow-hidden">
+          <div className="w-8 h-8 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg flex items-center justify-center text-lg shadow-sm flex-shrink-0 font-bold">F</div>
+          <span className={`font-bold text-xl text-indigo-600 dark:text-indigo-400 whitespace-nowrap transition-opacity duration-300 ${!sidebarOpen && 'opacity-0 w-0'}`}>
+            Férias Fácil
+          </span>
         </div>
 
-        <nav className="p-2 space-y-2 flex-1 overflow-y-auto">
+        <nav className="p-3 space-y-1 flex-1 overflow-y-auto">
           <button
             onClick={() => handleNavigate(Tab.DASHBOARD)}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium whitespace-nowrap overflow-hidden ${activeTab === Tab.DASHBOARD ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
@@ -282,11 +309,20 @@ const App: React.FC = () => {
           {role === 'master' && (
             <button
               onClick={() => handleNavigate(Tab.USERS)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium whitespace-nowrap overflow-hidden ${activeTab === Tab.USERS ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
-              title="Usuários"
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium whitespace-nowrap overflow-hidden group relative ${activeTab === Tab.USERS ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+              title="Usuários e Permissões"
             >
-              <Lock className="w-5 h-5 flex-shrink-0" />
-              {sidebarOpen && <span>Usuários</span>}
+              <div className={`flex-shrink-0 ${activeTab === Tab.USERS ? 'text-indigo-600 dark:text-indigo-400' : ''}`}>
+                <UserCog className="w-5 h-5" />
+              </div>
+              <span className={`transition-opacity duration-300 ${!sidebarOpen && 'opacity-0 w-0'}`}>Usuários</span>
+
+              {/* Tooltip for collapsed state */}
+              {!sidebarOpen && (
+                <div className="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none">
+                  Gerenciar Usuários
+                </div>
+              )}
             </button>
           )}
         </nav>
