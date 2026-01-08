@@ -4,6 +4,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import db from './db.js';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'ferias-facil-secret-key-change-me';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,7 +23,8 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // --- API Endpoint IA ---
-app.post('/api/chat', async (req, res) => {
+// --- API Endpoint IA ---
+app.post('/api/chat', authenticateToken, async (req, res) => {
     const { prompt, context } = req.body;
 
     if (!prompt) {
@@ -63,7 +68,8 @@ app.post('/api/chat', async (req, res) => {
 // --- API Endpoints Colaboradores ---
 
 // 1. Listar Colaboradores
-app.get('/api/employees', async (req, res) => {
+// 1. Listar Colaboradores
+app.get('/api/employees', authenticateToken, async (req, res) => {
     try {
         const result = await db.query('SELECT * FROM employees ORDER BY name ASC');
         // Mapear campos do banco (snake_case) para o frontend (camelCase) se necessário
@@ -84,20 +90,81 @@ app.get('/api/employees', async (req, res) => {
 });
 
 // --- Auto-Migration: Atualizar Schema se necessário ---
+// --- Auto-Migration: Atualizar Schema se necessário ---
 const runMigrations = async () => {
     try {
+        // 1. Atualizar tabelas existentes
         await db.query(`
             ALTER TABLE vacations ADD COLUMN IF NOT EXISTS notice_sent BOOLEAN DEFAULT FALSE;
             ALTER TABLE vacations ADD COLUMN IF NOT EXISTS advance_13th BOOLEAN DEFAULT FALSE;
         `);
-        console.log('Migração de Schema executada com sucesso.');
+
+        // 2. Criar tabela de usuários se não existir
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // 3. Criar usuário admin padrão se não houver usuários
+        const usersResult = await db.query('SELECT count(*) FROM users');
+        if (usersResult.rows[0].count === '0') {
+            const salt = await bcrypt.genSalt(10);
+            const hash = await bcrypt.hash('admin123', salt);
+            await db.query('INSERT INTO users (username, password_hash) VALUES ($1, $2)', ['admin', hash]);
+            console.log('Usuário admin padrão criado (user: admin, pass: admin123)');
+        }
+
+        console.log('Migração de Schema e Seed executados com sucesso.');
     } catch (err) {
         console.error('Erro na migração de schema:', err);
     }
 };
 
+// --- Middleware de Autenticação ---
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) return res.sendStatus(401);
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403);
+        req.user = user;
+        next();
+    });
+};
+
+// --- API Auth ---
+app.post('/api/auth/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
+        const user = result.rows[0];
+
+        if (!user) return res.status(400).json({ error: 'Usuário não encontrado' });
+
+        const validPassword = await bcrypt.compare(password, user.password_hash);
+        if (!validPassword) return res.status(400).json({ error: 'Senha incorreta' });
+
+        const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '8h' });
+        res.json({ token, username: user.username });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro no login' });
+    }
+});
+
+app.post('/api/auth/verify', authenticateToken, (req, res) => {
+    res.json({ valid: true, user: req.user });
+});
+
 // 2. Criar Colaborador
-app.post('/api/employees', async (req, res) => {
+// 2. Criar Colaborador
+app.post('/api/employees', authenticateToken, async (req, res) => {
     const { name, role, department, admissionDate, lastVacationEnd } = req.body;
     try {
         const result = await db.query(
@@ -122,7 +189,8 @@ app.post('/api/employees', async (req, res) => {
 });
 
 // 2.5 Editar Colaborador
-app.put('/api/employees/:id', async (req, res) => {
+// 2.5 Editar Colaborador
+app.put('/api/employees/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { name, role, department, admissionDate, lastVacationEnd } = req.body;
     try {
@@ -156,7 +224,8 @@ app.put('/api/employees/:id', async (req, res) => {
 });
 
 // 3. Remover Colaborador
-app.delete('/api/employees/:id', async (req, res) => {
+// 3. Remover Colaborador
+app.delete('/api/employees/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     try {
         await db.query('DELETE FROM employees WHERE id = $1', [id]);
@@ -170,7 +239,8 @@ app.delete('/api/employees/:id', async (req, res) => {
 // --- API Endpoints Férias ---
 
 // Listar Férias
-app.get('/api/vacations', async (req, res) => {
+// Listar Férias
+app.get('/api/vacations', authenticateToken, async (req, res) => {
     try {
         const result = await db.query('SELECT * FROM vacations ORDER BY start_date ASC');
         const formatted = result.rows.map(row => ({
@@ -191,7 +261,8 @@ app.get('/api/vacations', async (req, res) => {
 });
 
 // Adicionar Férias
-app.post('/api/vacations', async (req, res) => {
+// Adicionar Férias
+app.post('/api/vacations', authenticateToken, async (req, res) => {
     console.log('Recebendo requisição de férias:', req.body);
     const { employeeId, startDate, durationDays, status, hasAbono, advance13th } = req.body;
 
@@ -228,7 +299,8 @@ app.post('/api/vacations', async (req, res) => {
 });
 
 // Atualizar Férias
-app.put('/api/vacations/:id', async (req, res) => {
+// Atualizar Férias
+app.put('/api/vacations/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { startDate, durationDays, status, hasAbono, noticeSent, advance13th } = req.body;
     try {
@@ -258,7 +330,8 @@ app.put('/api/vacations/:id', async (req, res) => {
 });
 
 // Remover Férias
-app.delete('/api/vacations/:id', async (req, res) => {
+// Remover Férias
+app.delete('/api/vacations/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     try {
         await db.query('DELETE FROM vacations WHERE id = $1', [id]);

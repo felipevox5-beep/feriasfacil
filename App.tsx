@@ -4,10 +4,15 @@ import Dashboard from './components/Dashboard';
 import Employees from './components/Employees';
 import Calculator from './components/Calculator';
 import AIAdvisor from './components/AIAdvisor';
-import { LayoutDashboard, Users, Calculator as CalcIcon, MessageSquareText, Moon, Sun } from 'lucide-react';
+import Login from './components/Login';
+import { LayoutDashboard, Users, Calculator as CalcIcon, MessageSquareText, Moon, Sun, LogOut } from 'lucide-react';
 
 const App: React.FC = () => {
-  // State
+  // Auth State
+  const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
+  const [username, setUsername] = useState<string>(localStorage.getItem('username') || '');
+
+  // App State
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
   const [aiPrompt, setAiPrompt] = useState<string>('');
   const [editingVacation, setEditingVacation] = useState<Vacation | null>(null);
@@ -21,35 +26,33 @@ const App: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vacations, setVacations] = useState<Vacation[]>([]);
 
+  // Authenticated Fetch Helper
+  const authFetch = async (url: string, options: RequestInit = {}) => {
+    if (!token) throw new Error('No token');
+
+    const headers = {
+      ...options.headers,
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    const res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401 || res.status === 403) {
+      handleLogout();
+      throw new Error('Unauthorized');
+    }
+
+    return res;
+  };
+
   // Fetch Data on Load
   useEffect(() => {
-    fetchEmployees();
-    fetchVacations();
-  }, []);
-
-  const fetchEmployees = async () => {
-    try {
-      const res = await fetch('/api/employees');
-      if (res.ok) {
-        const data = await res.json();
-        setEmployees(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch employees', error);
+    if (token) {
+      fetchEmployees();
+      fetchVacations();
     }
-  };
-
-  const fetchVacations = async () => {
-    try {
-      const res = await fetch('/api/vacations');
-      if (res.ok) {
-        const data = await res.json();
-        setVacations(data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch vacations', error);
-    }
-  };
+  }, [token]);
 
   // Dark Mode Effect
   useEffect(() => {
@@ -61,11 +64,50 @@ const App: React.FC = () => {
     }
   }, [darkMode]);
 
+  const handleLogin = (newToken: string, newUsername: string) => {
+    localStorage.setItem('authToken', newToken);
+    localStorage.setItem('username', newUsername);
+    setToken(newToken);
+    setUsername(newUsername);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('username');
+    setToken(null);
+    setUsername('');
+    setEmployees([]);
+    setVacations([]);
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await authFetch('/api/employees');
+      if (res.ok) {
+        const data = await res.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch employees', error);
+    }
+  };
+
+  const fetchVacations = async () => {
+    try {
+      const res = await authFetch('/api/vacations');
+      if (res.ok) {
+        const data = await res.json();
+        setVacations(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch vacations', error);
+    }
+  };
+
   const handleAddEmployee = async (emp: Employee) => {
     try {
-      const res = await fetch('/api/employees', {
+      const res = await authFetch('/api/employees', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(emp),
       });
       if (res.ok) {
@@ -79,9 +121,8 @@ const App: React.FC = () => {
 
   const handleEditEmployee = async (updatedEmp: Employee) => {
     try {
-      const res = await fetch(`/api/employees/${updatedEmp.id}`, {
+      const res = await authFetch(`/api/employees/${updatedEmp.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedEmp),
       });
       if (res.ok) {
@@ -96,7 +137,7 @@ const App: React.FC = () => {
   const handleRemoveEmployee = async (id: string) => {
     if (!window.confirm('Tem certeza que deseja remover este colaborador?')) return;
     try {
-      const res = await fetch(`/api/employees/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`/api/employees/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setEmployees(employees.filter(e => e.id !== id));
       }
@@ -107,9 +148,8 @@ const App: React.FC = () => {
 
   const handleSaveVacation = async (vacation: Vacation) => {
     try {
-      const res = await fetch('/api/vacations', {
+      const res = await authFetch('/api/vacations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(vacation),
       });
       if (res.ok) {
@@ -124,9 +164,8 @@ const App: React.FC = () => {
 
   const handleUpdateVacation = async (updatedVacation: Vacation) => {
     try {
-      const res = await fetch(`/api/vacations/${updatedVacation.id}`, {
+      const res = await authFetch(`/api/vacations/${updatedVacation.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedVacation),
       });
       if (res.ok) {
@@ -147,7 +186,7 @@ const App: React.FC = () => {
   const handleCancelVacation = async (id: string) => {
     if (window.confirm('Tem certeza que deseja cancelar estas férias?')) {
       try {
-        const res = await fetch(`/api/vacations/${id}`, { method: 'DELETE' });
+        const res = await authFetch(`/api/vacations/${id}`, { method: 'DELETE' });
         if (res.ok) {
           setVacations(vacations.filter(v => v.id !== id));
         }
@@ -159,7 +198,6 @@ const App: React.FC = () => {
 
   const handleNavigate = (tab: Tab) => {
     setActiveTab(tab);
-    // If navigating away from calculator manually, clear edit mode
     if (tab !== Tab.CALCULATOR) {
       setEditingVacation(null);
     }
@@ -175,15 +213,21 @@ const App: React.FC = () => {
     setActiveTab(Tab.CALCULATOR);
   };
 
+  // Render Login if not authenticated
+  if (!token) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col md:flex-row transition-colors duration-200">
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 transition-colors duration-200">
+      <aside className="w-full md:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 transition-colors duration-200 flex flex-col">
         <div className="p-6 border-b border-slate-100 dark:border-slate-700">
           <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xl">
             <div className="w-8 h-8 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg flex items-center justify-center text-lg shadow-sm">F</div>
             <span>Férias Fácil</span>
           </div>
+          <p className="text-xs text-slate-400 mt-2">Olá, {username}</p>
         </div>
 
         <nav className="p-4 space-y-2 flex-1">
@@ -220,13 +264,21 @@ const App: React.FC = () => {
           </button>
         </nav>
 
-        <div className="p-4 border-t border-slate-100 dark:border-slate-700">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
           <button
             onClick={() => setDarkMode(!darkMode)}
             className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
           >
             <span className="text-sm font-medium">Modo Escuro</span>
             {darkMode ? <Moon className="w-4 h-4 text-indigo-400" /> : <Sun className="w-4 h-4 text-orange-500" />}
+          </button>
+
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="text-sm font-medium">Sair</span>
           </button>
         </div>
       </aside>
