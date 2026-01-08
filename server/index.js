@@ -140,19 +140,28 @@ const runMigrations = async () => {
 // --- API Auth ---
 app.post('/api/auth/login', async (req, res) => {
     const { username, password } = req.body;
+    console.log(`[AUTH] Tentativa de login para usuário: ${username}`);
+
     try {
         const result = await db.query('SELECT * FROM users WHERE username = $1', [username]);
         const user = result.rows[0];
 
-        if (!user) return res.status(400).json({ error: 'Usuário não encontrado' });
+        if (!user) {
+            console.log(`[AUTH] Falha: Usuário '${username}' não encontrado.`);
+            return res.status(400).json({ error: 'Usuário não encontrado' });
+        }
 
         const validPassword = await bcrypt.compare(password, user.password_hash);
-        if (!validPassword) return res.status(400).json({ error: 'Senha incorreta' });
+        if (!validPassword) {
+            console.log(`[AUTH] Falha: Senha incorreta para '${username}'.`);
+            return res.status(400).json({ error: 'Senha incorreta' });
+        }
 
+        console.log(`[AUTH] Sucesso: Login realizado para '${username}'.`);
         const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '8h' });
         res.json({ token, username: user.username });
     } catch (err) {
-        console.error(err);
+        console.error('[AUTH] Erro no servidor durante login:', err);
         res.status(500).json({ error: 'Erro no login' });
     }
 });
