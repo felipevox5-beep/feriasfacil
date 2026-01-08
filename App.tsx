@@ -6,7 +6,7 @@ import Calculator from './components/Calculator';
 import AIAdvisor from './components/AIAdvisor';
 import Login from './components/Login';
 import UsersComponent from './components/Users';
-import { LayoutDashboard, Users, Calculator as CalcIcon, MessageSquareText, Moon, Sun, LogOut, Lock } from 'lucide-react';
+import { LayoutDashboard, Users, Calculator as CalcIcon, MessageSquareText, Moon, Sun, LogOut, Lock, Menu, ChevronLeft } from 'lucide-react';
 
 const App: React.FC = () => {
   // Auth State
@@ -24,6 +24,9 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('darkMode');
     return saved === 'true';
   });
+
+  // Sidebar State
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vacations, setVacations] = useState<Vacation[]>([]);
@@ -228,55 +231,62 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex flex-col md:flex-row transition-colors duration-200">
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 transition-colors duration-200 flex flex-col">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-700">
-          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xl">
-            <div className="w-8 h-8 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg flex items-center justify-center text-lg shadow-sm">F</div>
-            <span>Férias Fácil</span>
+      <aside className={`bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex-shrink-0 transition-all duration-300 flex flex-col ${sidebarOpen ? 'w-full md:w-64' : 'w-full md:w-20'}`}>
+        <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-bold text-xl overflow-hidden whitespace-nowrap">
+            <div className="w-8 h-8 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg flex items-center justify-center text-lg shadow-sm flex-shrink-0">F</div>
+            {sidebarOpen && <span className="transition-opacity duration-300">Férias Fácil</span>}
           </div>
-          <p className="text-xs text-slate-400 mt-2">Olá, {username}</p>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 hidden md:block">
+            {sidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
         </div>
 
-        <nav className="p-4 space-y-2 flex-1">
+        <nav className="p-2 space-y-2 flex-1 overflow-y-auto">
           <button
             onClick={() => handleNavigate(Tab.DASHBOARD)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === Tab.DASHBOARD ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium whitespace-nowrap overflow-hidden ${activeTab === Tab.DASHBOARD ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            title="Dashboard"
           >
-            <LayoutDashboard className="w-5 h-5" />
-            Dashboard
+            <LayoutDashboard className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Dashboard</span>}
           </button>
 
           <button
             onClick={() => handleNavigate(Tab.EMPLOYEES)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === Tab.EMPLOYEES ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium whitespace-nowrap overflow-hidden ${activeTab === Tab.EMPLOYEES ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            title="Colaboradores"
           >
-            <Users className="w-5 h-5" />
-            Colaboradores
+            <Users className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Colaboradores</span>}
           </button>
 
           <button
             onClick={() => handleNavigate(Tab.CALCULATOR)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === Tab.CALCULATOR ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium whitespace-nowrap overflow-hidden ${activeTab === Tab.CALCULATOR ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            title="Agendar/Calcular"
           >
-            <CalcIcon className="w-5 h-5" />
-            Agendar/Calcular
+            <CalcIcon className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Agendar/Calcular</span>}
           </button>
 
           <button
             onClick={() => handleNavigate(Tab.ADVISOR)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === Tab.ADVISOR ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium whitespace-nowrap overflow-hidden ${activeTab === Tab.ADVISOR ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+            title="Consultor IA"
           >
-            <MessageSquareText className="w-5 h-5" />
-            Consultor IA
+            <MessageSquareText className="w-5 h-5 flex-shrink-0" />
+            {sidebarOpen && <span>Consultor IA</span>}
           </button>
 
           {role === 'master' && (
             <button
               onClick={() => handleNavigate(Tab.USERS)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === Tab.USERS ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium whitespace-nowrap overflow-hidden ${activeTab === Tab.USERS ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-slate-800 dark:hover:text-slate-200'}`}
+              title="Usuários"
             >
-              <Lock className="w-5 h-5" />
-              Usuários
+              <Lock className="w-5 h-5 flex-shrink-0" />
+              {sidebarOpen && <span>Usuários</span>}
             </button>
           )}
         </nav>
@@ -284,35 +294,49 @@ const App: React.FC = () => {
         <div className="p-4 border-t border-slate-100 dark:border-slate-700 space-y-2">
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors whitespace-nowrap overflow-hidden"
+            title="Modo Escuro"
           >
-            <span className="text-sm font-medium">Modo Escuro</span>
-            {darkMode ? <Moon className="w-4 h-4 text-indigo-400" /> : <Sun className="w-4 h-4 text-orange-500" />}
+            {darkMode ? <Moon className="w-5 h-5 flex-shrink-0 text-indigo-400" /> : <Sun className="w-5 h-5 flex-shrink-0 text-orange-500" />}
+            {sidebarOpen && <span className="text-sm font-medium">Modo Escuro</span>}
           </button>
 
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="text-sm font-medium">Sair</span>
-          </button>
+          <div className={`flex items-center gap-3 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 overflow-hidden ${!sidebarOpen && 'justify-center'}`}>
+            <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold flex-shrink-0">
+              {username.charAt(0).toUpperCase()}
+            </div>
+            {sidebarOpen && (
+              <div className="overflow-hidden">
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">{username}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate capitalize">{role === 'master' ? 'Administrador' : 'Comum'}</p>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <header className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
-            {activeTab === Tab.DASHBOARD && 'Visão Geral'}
-            {activeTab === Tab.EMPLOYEES && 'Gerenciar Time'}
-            {activeTab === Tab.CALCULATOR && 'Planejamento de Férias'}
-            {activeTab === Tab.ADVISOR && 'Consultoria Jurídica (IA)'}
-            {activeTab === Tab.USERS && 'Gerenciamento de Usuários'}
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
-            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
+      <main className="flex-1 p-4 md:p-8 overflow-y-auto w-full">
+        <header className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-white">
+              {activeTab === Tab.DASHBOARD && 'Visão Geral'}
+              {activeTab === Tab.EMPLOYEES && 'Gerenciar Time'}
+              {activeTab === Tab.CALCULATOR && 'Planejamento de Férias'}
+              {activeTab === Tab.ADVISOR && 'Consultoria Jurídica (IA)'}
+              {activeTab === Tab.USERS && 'Gerenciamento de Usuários'}
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
+              {new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors font-medium text-sm"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair
+          </button>
         </header>
 
         <div className="max-w-6xl mx-auto h-[calc(100vh-12rem)]">

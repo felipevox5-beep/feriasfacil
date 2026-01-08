@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Lock, User, LogIn, Eye, EyeOff } from 'lucide-react';
 
 interface LoginProps {
-    onLogin: (token: string, username: string) => void;
+    onLogin: (token: string, username: string, role?: string) => void;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -26,7 +26,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
             if (res.ok) {
                 const data = await res.json();
-                onLogin(data.token, data.username);
+                onLogin(data.token, data.username, data.role);
             } else {
                 const err = await res.json();
                 setError(err.error || 'Falha no login');
