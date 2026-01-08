@@ -15,6 +15,10 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // Delete Modal State
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteName, setDeleteName] = useState<string>('');
+
   // Form State
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
@@ -86,6 +90,19 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
     resetForm();
   };
 
+  const confirmDelete = (id: string, empName: string) => {
+    setDeleteId(id);
+    setDeleteName(empName);
+  };
+
+  const handleDelete = () => {
+    if (deleteId) {
+      onRemoveEmployee(deleteId);
+      setDeleteId(null);
+      setDeleteName('');
+    }
+  };
+
   const handleExportCSV = () => {
     if (employees.length === 0) return;
 
@@ -124,7 +141,37 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
+      {/* Delete Confirmation Modal */}
+      {deleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-700">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center mb-4 text-red-600 dark:text-red-400">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Excluir Colaborador?</h3>
+              <p className="text-slate-500 dark:text-slate-400 mb-6">
+                Tem certeza que deseja remover <strong>{deleteName}</strong>? Essa ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-3 w-full">
+                <button
+                  onClick={() => setDeleteId(null)}
+                  className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-200 dark:shadow-none transition-colors"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Form Section */}
       <div className="lg:col-span-1">
         <div className={`bg-white dark:bg-slate-800 p-6 rounded-xl border shadow-sm transition-all ${editingId ? 'border-orange-200 dark:border-orange-800 ring-2 ring-orange-100 dark:ring-orange-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
@@ -291,7 +338,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
 
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
-                        onClick={() => onEditEmployee && onEditEmployee(emp)}
+                        onClick={() => handleEditClick(emp)}
                         className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
                         title="Editar"
                       >
@@ -299,7 +346,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
                       </button>
                       {userRole === 'master' && (
                         <button
-                          onClick={() => onRemoveEmployee(emp.id)}
+                          onClick={() => confirmDelete(emp.id, emp.name)}
                           className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                           title="Remover"
                         >

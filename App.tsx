@@ -393,6 +393,7 @@ const App: React.FC = () => {
               onAddEmployee={handleAddEmployee}
               onRemoveEmployee={handleRemoveEmployee}
               onEditEmployee={handleEditEmployee}
+              userRole={role}
             />
           )}
           {activeTab === Tab.CALCULATOR && (
