@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Employee } from '../types';
-import { Plus, Trash2, User, Calendar, Briefcase, Download, Clock, Pencil, UserPlus, Search } from 'lucide-react';
+import { Plus, Trash2, User, Calendar, Briefcase, Download, Clock, Pencil, UserPlus, Search, X } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
 
 interface EmployeesProps {
@@ -14,6 +14,9 @@ interface EmployeesProps {
 const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemoveEmployee, onEditEmployee, userRole }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Delete Modal State
 
   // Delete Modal State
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -64,6 +67,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
 
     // Reset Form
     resetForm();
+    setIsModalOpen(false);
   };
 
   const resetForm = () => {
@@ -72,7 +76,9 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
     setDepartment('Geral');
     setAdmissionDate('');
     setLastVacationEnd('');
+    setLastVacationEnd('');
     setEditingId(null);
+    setIsModalOpen(false);
   };
 
   const handleEditClick = (emp: Employee) => {
@@ -82,8 +88,12 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
     setDepartment(emp.department);
     setAdmissionDate(emp.admissionDate);
     setLastVacationEnd(emp.lastVacationEnd || '');
-    // Scroll to top
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setIsModalOpen(true);
+  };
+
+  const handleAddNewClick = () => {
+    resetForm();
+    setIsModalOpen(true);
   };
 
   const handleCancelEdit = () => {
@@ -172,108 +182,114 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
           </div>
         </div>
       )}
-      {/* Form Section */}
-      <div className="lg:col-span-1">
-        <div className={`bg-white dark:bg-slate-800 p-6 rounded-xl border shadow-sm transition-all ${editingId ? 'border-orange-200 dark:border-orange-800 ring-2 ring-orange-100 dark:ring-orange-900/20' : 'border-slate-200 dark:border-slate-700'}`}>
-          <div className="flex items-center gap-3 mb-6">
-            <div className={`p-2 rounded-lg ${editingId ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'}`}>
-              {editingId ? <Pencil className="w-6 h-6" /> : <UserPlus className="w-6 h-6" />}
-            </div>
-            <h2 className="text-xl font-bold text-slate-800 dark:text-white">
-              {editingId ? 'Editar Colaborador' : 'Novo Colaborador'}
-            </h2>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome Completo</label>
-              <input
-                type="text"
-                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="Ex: João da Silva"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cargo</label>
-                <input
-                  type="text"
-                  className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
-                  value={role}
-                  onChange={e => setRole(e.target.value)}
-                  placeholder="Ex: Desenvolvedor"
-                />
+      {/* Form Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700 flex flex-col">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${editingId ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400' : 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'}`}>
+                  {editingId ? <Pencil className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+                </div>
+                <h2 className="text-xl font-bold text-slate-800 dark:text-white">
+                  {editingId ? 'Editar Colaborador' : 'Novo Colaborador'}
+                </h2>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Departamento</label>
-                <select
-                  className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
-                  value={department}
-                  onChange={e => setDepartment(e.target.value)}
-                >
-                  <option value="Geral">Geral</option>
-                  <option value="TI">TI</option>
-                  <option value="RH">RH</option>
-                  <option value="Comercial">Comercial</option>
-                  <option value="Financeiro">Financeiro</option>
-                  <option value="Operações">Operações</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data de Admissão</label>
-              <input
-                type="date"
-                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
-                value={admissionDate}
-                onChange={e => setAdmissionDate(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                Fim das Últimas Férias <span className="text-slate-400 font-normal">(Opcional)</span>
-              </label>
-              <input
-                type="date"
-                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
-                value={lastVacationEnd}
-                onChange={e => setLastVacationEnd(e.target.value)}
-              />
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Deixe em branco se for a primeira vez.
-              </p>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="submit"
-                className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-medium text-white transition-colors ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-indigo-600 hover:bg-indigo-700'}`}
-              >
-                {editingId ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                {editingId ? 'Salvar Alterações' : 'Cadastrar'}
+              <button onClick={handleCancelEdit} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700">
+                <X className="w-6 h-6" />
               </button>
-
-              {editingId && (
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                >
-                  Cancelar
-                </button>
-              )}
             </div>
-          </form>
-        </div>
-      </div>
 
-      {/* List Section */}
-      <div className="lg:col-span-2">
+            <div className="p-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nome Completo</label>
+                  <input
+                    type="text"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    placeholder="Ex: João da Silva"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cargo</label>
+                    <input
+                      type="text"
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
+                      value={role}
+                      onChange={e => setRole(e.target.value)}
+                      placeholder="Ex: Desenvolvedor"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Departamento</label>
+                    <select
+                      className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
+                      value={department}
+                      onChange={e => setDepartment(e.target.value)}
+                    >
+                      <option value="Geral">Geral</option>
+                      <option value="TI">TI</option>
+                      <option value="RH">RH</option>
+                      <option value="Comercial">Comercial</option>
+                      <option value="Financeiro">Financeiro</option>
+                      <option value="Operações">Operações</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data de Admissão</label>
+                  <input
+                    type="date"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
+                    value={admissionDate}
+                    onChange={e => setAdmissionDate(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Fim das Últimas Férias <span className="text-slate-400 font-normal">(Opcional)</span>
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 outline-none dark:bg-slate-900 dark:text-white"
+                    value={lastVacationEnd}
+                    onChange={e => setLastVacationEnd(e.target.value)}
+                  />
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Deixe em branco se for a primeira vez.
+                  </p>
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-bold text-white transition-colors shadow-lg ${editingId ? 'bg-orange-500 hover:bg-orange-600 shadow-orange-200 dark:shadow-none' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none'}`}
+                  >
+                    {editingId ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    {editingId ? 'Salvar Alterações' : 'Cadastrar'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* List Section - Full Width */}
+      <div className="col-span-1 lg:col-span-3">
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full">
           <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center gap-4 flex-wrap">
             <h2 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
@@ -282,6 +298,14 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
             </h2>
 
             <div className="flex gap-2 flex-1 justify-end">
+              <button
+                onClick={handleAddNewClick}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">Novo Colaborador</span>
+              </button>
+
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
                 <input
