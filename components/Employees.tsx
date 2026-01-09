@@ -1,22 +1,34 @@
 import React, { useState } from 'react';
-import { Employee } from '../types';
-import { Plus, Trash2, User, Calendar, Briefcase, Download, Clock, Pencil, UserPlus, Search, X } from 'lucide-react';
+import { Employee, Department } from '../types';
+import { Plus, Trash2, User, Briefcase, Download, Clock, Pencil, UserPlus, Search, X, Settings, Building2 } from 'lucide-react';
 import { formatDate } from '../utils/dateUtils';
 
 interface EmployeesProps {
   employees: Employee[];
+  departments: Department[];
   onAddEmployee: (emp: Employee) => void;
   onRemoveEmployee: (id: string) => void;
   onEditEmployee?: (emp: Employee) => void;
+  onAddDepartment: (name: string) => void;
+  onRemoveDepartment: (id: string) => void;
   userRole?: string;
 }
 
-const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemoveEmployee, onEditEmployee, userRole }) => {
+const Employees: React.FC<EmployeesProps> = ({
+  employees,
+  departments,
+  onAddEmployee,
+  onRemoveEmployee,
+  onEditEmployee,
+  onAddDepartment,
+  onRemoveDepartment,
+  userRole
+}) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Delete Modal State
+  const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
+  const [newDeptName, setNewDeptName] = useState('');
 
   // Delete Modal State
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -25,7 +37,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
   // Form State
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
-  const [department, setDepartment] = useState('Geral');
+  const [department, setDepartment] = useState('');
   const [admissionDate, setAdmissionDate] = useState('');
   const [lastVacationEnd, setLastVacationEnd] = useState('');
 
@@ -53,7 +65,7 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
       id: editingId || crypto.randomUUID(),
       name,
       role,
-      department: department || 'Geral',
+      department: department || (departments.length > 0 ? departments[0].name : 'Geral'),
       admissionDate,
       lastVacationEnd: lastVacationEnd || undefined
     };
@@ -73,9 +85,8 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
   const resetForm = () => {
     setName('');
     setRole('');
-    setDepartment('Geral');
+    setDepartment(departments.length > 0 ? departments[0].name : '');
     setAdmissionDate('');
-    setLastVacationEnd('');
     setLastVacationEnd('');
     setEditingId(null);
     setIsModalOpen(false);
@@ -111,6 +122,13 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
       setDeleteId(null);
       setDeleteName('');
     }
+  };
+
+  const handleAddDept = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDeptName.trim()) return;
+    onAddDepartment(newDeptName);
+    setNewDeptName('');
   };
 
   const handleExportCSV = () => {
@@ -182,6 +200,69 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
           </div>
         </div>
       )}
+
+      {/* Department Management Modal */}
+      {isDeptModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 dark:border-slate-700 flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded-lg">
+                  <Settings className="w-5 h-5" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white">Gerenciar Departamentos</h3>
+              </div>
+              <button onClick={() => setIsDeptModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddDept} className="flex gap-2 mb-6">
+              <input
+                type="text"
+                placeholder="Novo Departamento..."
+                className="flex-1 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-purple-500 dark:bg-slate-900 dark:text-white"
+                value={newDeptName}
+                onChange={e => setNewDeptName(e.target.value)}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold shadow-lg shadow-purple-200 dark:shadow-none transition-colors"
+                disabled={!newDeptName.trim()}
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </form>
+
+            <div className="flex-1 overflow-y-auto custom-scrollbar -mr-2 pr-2">
+              {departments.length === 0 ? (
+                <p className="text-center text-slate-400 py-4">Nenhum departamento cadastrado.</p>
+              ) : (
+                <div className="space-y-2">
+                  {departments.map(dept => (
+                    <div key={dept.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/30 rounded-lg border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center gap-3">
+                        <Building2 className="w-4 h-4 text-slate-400" />
+                        <span className="font-medium text-slate-700 dark:text-slate-300">{dept.name}</span>
+                      </div>
+                      {userRole === 'master' && (
+                        <button
+                          onClick={() => onRemoveDepartment(dept.id)}
+                          className="text-slate-400 hover:text-red-500 transition-colors p-1"
+                          title="Remover departamento"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Form Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
@@ -231,12 +312,10 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
                       value={department}
                       onChange={e => setDepartment(e.target.value)}
                     >
-                      <option value="Geral">Geral</option>
-                      <option value="TI">TI</option>
-                      <option value="RH">RH</option>
-                      <option value="Comercial">Comercial</option>
-                      <option value="Financeiro">Financeiro</option>
-                      <option value="Operações">Operações</option>
+                      <option value="" disabled>Selecione...</option>
+                      {departments.map(dept => (
+                        <option key={dept.id} value={dept.name}>{dept.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -298,6 +377,17 @@ const Employees: React.FC<EmployeesProps> = ({ employees, onAddEmployee, onRemov
             </h2>
 
             <div className="flex gap-2 flex-1 justify-end">
+              {userRole === 'master' && (
+                <button
+                  onClick={() => setIsDeptModalOpen(true)}
+                  className="flex items-center gap-2 px-3 py-2 text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 rounded-xl hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors font-medium text-sm"
+                  title="Gerenciar Departamentos"
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">Departamentos</span>
+                </button>
+              )}
+
               <button
                 onClick={handleAddNewClick}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-colors"

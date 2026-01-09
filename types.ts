@@ -7,6 +7,11 @@ export interface Employee {
   lastVacationEnd?: string; // ISO Date string YYYY-MM-DD (Optional - Last time they returned from vacation)
 }
 
+export interface Department {
+  id: string;
+  name: string;
+}
+
 export interface Vacation {
   id: string;
   employeeId: string;

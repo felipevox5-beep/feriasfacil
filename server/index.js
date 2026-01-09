@@ -133,7 +133,26 @@ const runMigrations = async () => {
             ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'common';
         `);
 
-        // 3. Garantir que o usuário admin existe com a senha correta e role 'master'
+        // 3. Criar tabela de departamentos se não existir
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS departments (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                name VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+
+        // 4. Seed de departamentos padrão se a tabela estiver vazia
+        const deptCheck = await db.query('SELECT count(*) FROM departments');
+        if (parseInt(deptCheck.rows[0].count) === 0) {
+            const defaultDepts = ['Geral', 'TI', 'RH', 'Comercial', 'Financeiro', 'Operações'];
+            for (const dept of defaultDepts) {
+                await db.query('INSERT INTO departments (name) VALUES ($1) ON CONFLICT DO NOTHING', [dept]);
+            }
+            console.log('Departamentos padrão inseridos.');
+        }
+
+        // 5. Garantir que o usuário admin existe com a senha correta e role 'master'
         // Gera um novo hash para 'admin123'
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash('admin123', salt);
@@ -224,6 +243,37 @@ app.post('/api/users', authenticateToken, requireMaster, async (req, res) => {
     }
 });
 
+// Editar Usuário (Apenas Master)
+app.put('/api/users/:id', authenticateToken, requireMaster, async (req, res) => {
+    const { id } = req.params;
+    const { password, role } = req.body;
+
+    try {
+        let query, params;
+
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            const hash = await bcrypt.hash(password, salt);
+            query = 'UPDATE users SET password_hash = $1, role = $2 WHERE id = $3 RETURNING id, username, role';
+            params = [hash, role || 'common', id];
+        } else {
+            query = 'UPDATE users SET role = $1 WHERE id = $2 RETURNING id, username, role';
+            params = [role || 'common', id];
+        }
+
+        const result = await db.query(query, params);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao atualizar usuário' });
+    }
+});
+
 // Deletar Usuário (Apenas Master)
 app.delete('/api/users/:id', authenticateToken, requireMaster, async (req, res) => {
     const { id } = req.params;
@@ -309,6 +359,51 @@ app.delete('/api/employees/:id', authenticateToken, requireMaster, async (req, r
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Erro ao remover colaborador' });
+    }
+});
+
+// --- API Endpoints Departamentos ---
+
+// Listar Departamentos
+app.get('/api/departments', authenticateToken, async (req, res) => {
+    try {
+        const result = await db.query('SELECT * FROM departments ORDER BY name ASC');
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao listar departamentos' });
+    }
+});
+
+// Adicionar Departamento (Apenas Master)
+app.post('/api/departments', authenticateToken, requireMaster, async (req, res) => {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Nome do departamento é obrigatório' });
+
+    try {
+        const result = await db.query(
+            'INSERT INTO departments (name) VALUES ($1) RETURNING *',
+            [name]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        if (err.constraint === 'departments_name_key') {
+            return res.status(400).json({ error: 'Departamento já existe' });
+        }
+        res.status(500).json({ error: 'Erro ao criar departamento' });
+    }
+});
+
+// Remover Departamento (Apenas Master)
+app.delete('/api/departments/:id', authenticateToken, requireMaster, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query('DELETE FROM departments WHERE id = $1', [id]);
+        res.json({ message: 'Departamento removido com sucesso' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Erro ao remover departamento' });
     }
 });
 

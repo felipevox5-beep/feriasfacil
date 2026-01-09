@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Employee, Vacation, Tab } from './types';
+import { Employee, Vacation, Tab, Department } from './types';
 import Dashboard from './components/Dashboard';
 import Employees from './components/Employees';
 import Calculator from './components/Calculator';
@@ -31,6 +31,7 @@ const App: React.FC = () => {
 
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [vacations, setVacations] = useState<Vacation[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
 
   // Authenticated Fetch Helper
   const authFetch = async (url: string, options: RequestInit = {}) => {
@@ -56,8 +57,10 @@ const App: React.FC = () => {
   useEffect(() => {
     if (token) {
       verifySession();
+      verifySession();
       fetchEmployees();
       fetchVacations();
+      fetchDepartments();
     }
   }, [token]);
 
@@ -132,6 +135,48 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to fetch vacations', error);
+    }
+  };
+
+  const fetchDepartments = async () => {
+    try {
+      const res = await authFetch('/api/departments');
+      if (res.ok) {
+        const data = await res.json();
+        setDepartments(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch departments', error);
+    }
+  };
+
+  const handleAddDepartment = async (name: string) => {
+    try {
+      const res = await authFetch('/api/departments', {
+        method: 'POST',
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        const savedDept = await res.json();
+        setDepartments([...departments, savedDept]);
+      } else {
+        const err = await res.json();
+        alert(err.error || 'Erro ao adicionar departamento');
+      }
+    } catch (error) {
+      console.error('Error adding department', error);
+    }
+  };
+
+  const handleRemoveDepartment = async (id: string) => {
+    if (!window.confirm('Tem certeza que deseja remover este departamento?')) return;
+    try {
+      const res = await authFetch(`/api/departments/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setDepartments(departments.filter(d => d.id !== id));
+      }
+    } catch (error) {
+      console.error('Error removing department', error);
     }
   };
 
@@ -390,9 +435,12 @@ const App: React.FC = () => {
           {activeTab === Tab.EMPLOYEES && (
             <Employees
               employees={employees}
+              departments={departments}
               onAddEmployee={handleAddEmployee}
               onRemoveEmployee={handleRemoveEmployee}
               onEditEmployee={handleEditEmployee}
+              onAddDepartment={handleAddDepartment}
+              onRemoveDepartment={handleRemoveDepartment}
               userRole={role}
             />
           )}
