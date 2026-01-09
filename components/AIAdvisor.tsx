@@ -7,9 +7,10 @@ import * as XLSX from 'xlsx';
 interface AIAdvisorProps {
   initialPrompt?: string;
   employees?: Employee[];
+  token: string;
 }
 
-const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [] }) => {
+const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [], token }) => {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [response, setResponse] = useState('');
   const [loading, setLoading] = useState(false);
@@ -101,7 +102,10 @@ const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [
       // Call Backend API instead of direct Client SDK
       const res = await fetch('/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           prompt: textToAsk,
           context: employees

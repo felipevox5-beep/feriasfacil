@@ -455,7 +455,7 @@ const App: React.FC = () => {
             />
           )}
           {activeTab === Tab.ADVISOR && (
-            <AIAdvisor initialPrompt={aiPrompt} employees={employees} />
+            <AIAdvisor initialPrompt={aiPrompt} employees={employees} token={token!} />
           )}
           {activeTab === Tab.USERS && role === 'master' && (
             <UsersComponent token={token} />
