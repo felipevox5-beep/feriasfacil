@@ -110,7 +110,8 @@ const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Falha na comunicação com o servidor');
+        const errorMessage = errData.error || `Erro HTTP ${res.status}: ${res.statusText}`;
+        throw new Error(errorMessage);
       }
 
       const data = await res.json();

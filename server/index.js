@@ -27,10 +27,16 @@ const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (!token) return res.sendStatus(401);
+    if (!token) {
+        console.log('[AUTH] Falha: Token não fornecido.');
+        return res.sendStatus(401);
+    }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
+        if (err) {
+            console.log('[AUTH] Falha: Token inválido ou expirado.');
+            return res.sendStatus(403);
+        }
         req.user = user;
         next();
     });
@@ -46,6 +52,7 @@ const requireMaster = (req, res, next) => {
 
 // --- API Endpoint IA ---
 app.post('/api/chat', authenticateToken, async (req, res) => {
+    console.log('[API/CHAT] Recebendo requisição...');
     const { prompt, context } = req.body;
 
     if (!prompt) {
