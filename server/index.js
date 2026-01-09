@@ -53,7 +53,8 @@ app.post('/api/chat', authenticateToken, async (req, res) => {
     }
 
     if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: 'Servidor não configurado com chave API' });
+        console.error('ERRO: GEMINI_API_KEY não configurada no ambiente.');
+        return res.status(500).json({ error: 'Erro de Configuração: Chave da IA (GEMINI_API_KEY) não encontrada no servidor.' });
     }
 
     try {

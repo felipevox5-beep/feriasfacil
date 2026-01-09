@@ -109,15 +109,16 @@ const AIAdvisor: React.FC<AIAdvisorProps> = ({ initialPrompt = '', employees = [
       });
 
       if (!res.ok) {
-        throw new Error('Falha na comunicação com o servidor');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Falha na comunicação com o servidor');
       }
 
       const data = await res.json();
       setResponse(data.text || "Desculpe, não consegui gerar uma resposta no momento.");
       setShowGenerator(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error asking AI:", error);
-      setResponse("Ocorreu um erro ao conectar com o assistente inteligente. Verifique se o backend está rodando e a chave API configurada.");
+      setResponse(error.message || "Ocorreu um erro ao conectar com o assistente inteligente.");
     } finally {
       setLoading(false);
     }
