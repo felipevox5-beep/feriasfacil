@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Employee, Vacation } from '../types';
 import { addDays, subDays, calculateVacationDeadlines, formatDate, parseLocalDate } from '../utils/dateUtils';
 import { Calendar as CalendarIcon, ArrowRight, AlertTriangle, Calculator as CalcIcon, CheckCircle, FileText, Users, X, Banknote } from 'lucide-react';
+import ConflictModal from './ConflictModal';
 
 interface CalculatorProps {
   employees: Employee[];
@@ -31,6 +32,10 @@ const Calculator: React.FC<CalculatorProps> = ({
   const [noticeDeadline, setNoticeDeadline] = useState<Date | null>(null);
   const [deadlineInfo, setDeadlineInfo] = useState<{ limitDate: Date, periodStart: Date, periodEnd: Date } | null>(null);
   const [conflicts, setConflicts] = useState<Array<{ name: string, start: string, end: string }>>([]);
+
+  // Modal State
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [modalConflictNames, setModalConflictNames] = useState<string[]>([]);
 
   // Reset abono if days change and is not 30
   useEffect(() => {
@@ -112,30 +117,32 @@ const Calculator: React.FC<CalculatorProps> = ({
         });
 
         // Check specifically if this is a NEW conflict for the user interaction to avoid loops or initial load prompts
-        // We only prompt if startDate is set and we found conflicts.
-        // We defer the alert slightly to let the UI update first (showing conflicts list)
         if (overlapping.length > 0) {
           // Verify if the current selection is different from the original editing value (to simply prevent annoyance when opening edit)
           const isSameAsOriginal = editingVacation && editingVacation.startDate === startDate && editingVacation.durationDays === days;
 
           if (!isSameAsOriginal) {
-            const names = overlapping.map(o => o.name).join(', ');
-            // Use setTimeout to allow state to settle and UI to render the yellow box first if possible
-            setTimeout(() => {
-              if (confirm(`CONFLITO DETECTADO!\n\nExiste cruzamento de férias com: ${names}.\n\nDeseja manter essa data mesmo assim?`)) {
-                // User accepted conflict, do nothing (keep date)
-              } else {
-                setStartDate(''); // Clear date
-                setConflicts([]);
-              }
-            }, 100);
+            const names = overlapping.map(o => o.name);
+            setModalConflictNames(names);
+            setShowConflictModal(true);
           }
         }
 
         setConflicts(overlapping);
       }
     }
-  }, [startDate, days, selectedEmpId, vacations, employees, hasAbono]); // removed editingVacation from deps to avoid re-trigger logic, handled inside
+  }, [startDate, days, selectedEmpId, vacations, employees, hasAbono]);
+
+  const handleConfirmConflict = () => {
+    setShowConflictModal(false);
+    // Date remains set, allowing user to proceed
+  };
+
+  const handleCancelConflict = () => {
+    setShowConflictModal(false);
+    setStartDate('');
+    setConflicts([]);
+  };
 
   const handleSave = () => {
     if (selectedEmpId && startDate && days > 0) {
@@ -408,6 +415,13 @@ const Calculator: React.FC<CalculatorProps> = ({
           </div>
         )}
       </div>
+
+      <ConflictModal
+        isOpen={showConflictModal}
+        conflictingNames={modalConflictNames}
+        onConfirm={handleConfirmConflict}
+        onCancel={handleCancelConflict}
+      />
     </div>
   );
 };
