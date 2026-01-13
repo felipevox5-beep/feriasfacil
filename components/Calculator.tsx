@@ -110,10 +110,32 @@ const Calculator: React.FC<CalculatorProps> = ({
             end: addDays(parseLocalDate(v.startDate), vActualRest).toISOString().split('T')[0]
           };
         });
+
+        // Check specifically if this is a NEW conflict for the user interaction to avoid loops or initial load prompts
+        // We only prompt if startDate is set and we found conflicts.
+        // We defer the alert slightly to let the UI update first (showing conflicts list)
+        if (overlapping.length > 0) {
+          // Verify if the current selection is different from the original editing value (to simply prevent annoyance when opening edit)
+          const isSameAsOriginal = editingVacation && editingVacation.startDate === startDate && editingVacation.durationDays === days;
+
+          if (!isSameAsOriginal) {
+            const names = overlapping.map(o => o.name).join(', ');
+            // Use setTimeout to allow state to settle and UI to render the yellow box first if possible
+            setTimeout(() => {
+              if (confirm(`CONFLITO DETECTADO!\n\nExiste cruzamento de férias com: ${names}.\n\nDeseja manter essa data mesmo assim?`)) {
+                // User accepted conflict, do nothing (keep date)
+              } else {
+                setStartDate(''); // Clear date
+                setConflicts([]);
+              }
+            }, 100);
+          }
+        }
+
         setConflicts(overlapping);
       }
     }
-  }, [startDate, days, selectedEmpId, vacations, employees, editingVacation, hasAbono]);
+  }, [startDate, days, selectedEmpId, vacations, employees, hasAbono]); // removed editingVacation from deps to avoid re-trigger logic, handled inside
 
   const handleSave = () => {
     if (selectedEmpId && startDate && days > 0) {
